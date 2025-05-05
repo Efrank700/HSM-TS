@@ -1,0 +1,116 @@
+{
+  "id": "TopLevel",
+  "initial": "Start",
+  "states": {
+    "Start": {
+      "id": "Start",
+      "type": "normal",
+      "eventHandlers": {
+        "enter": "StartEntry",
+        "exit": "StartExit"
+      },
+      "childMachine": {
+        "id": "StartSubMachine",
+        "initial": "SubState1",
+        "states": {
+          "SubState1": {
+            "id": "SubState1",
+            "type": "normal",
+            "eventHandlers": {
+              "enter": "SubState1Entry",
+              "exit": "SubState1Exit"
+            }
+          },
+          "SubState2": {
+            "id": "SubState2",
+            "type": "normal",
+            "eventHandlers": {
+              "enter": "SubState2Entry",
+              "exit": "SubState2Exit"
+            }
+          }
+        },
+        "transitions": [
+          {
+            "fromState": "SubState1",
+            "eventType": "Event1",
+            "toState": "SubState2"
+          },
+          {
+            "fromState": "SubState1",
+            "eventType": "Event2",
+            "toState": "SubState1"
+          }
+        ]
+      }
+    },
+    "Parent": {
+      "id": "Parent",
+      "type": "normal",
+      "history": true,
+      "eventHandlers": {
+        "enter": "ParentEntry",
+        "exit": "ParentExit"
+      },
+      "childMachine": {
+        "id": "ParentSubMachine",
+        "initial": "Child1",
+        "states": {
+          "Child1": {
+            "id": "Child1",
+            "type": "normal",
+            "eventHandlers": {
+              "enter": "Child1Entry",
+              "exit": "Child1Exit"
+            }
+          },
+          "Child2": {
+            "id": "Child2",
+            "type": "normal",
+            "eventHandlers": {
+              "enter": "Child2Entry",
+              "exit": "Child2Exit"
+            }
+          }
+        },
+        "transitions": [
+          {
+            "fromState": "Child1",
+            "eventType": "Next",
+            "toState": "Child2"
+          },
+          {
+            "fromState": "Child2",
+            "eventType": "Next",
+            "toState": "Child1"
+          }
+        ]
+      }
+    },
+    "Other": {
+      "id": "Other",
+      "type": "normal",
+      "eventHandlers": {
+        "enter": "OtherEntry",
+        "exit": "OtherExit"
+      }
+    }
+  },
+  "transitions": [
+    {
+      "fromState": "Start",
+      "eventType": "timer",
+      "toState": "Parent"
+    },
+    {
+      "fromState": "Parent",
+      "eventType": "Leave",
+      "toState": "Other"
+    },
+    {
+      "fromState": "Other",
+      "eventType": "Return",
+      "toState": "Parent"
+    }
+  ]
+}
