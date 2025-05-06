@@ -1,17 +1,51 @@
 {
   "name": "hsm_ts",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Hierarchical State Machine implementation in TypeScript",
   "main": "dist/index.js",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
+  "sideEffects": false,
   "license": "MIT",
+  "author": "npm@amardent.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Efrank700/HSM-TS.git"
+  },
+  "keywords": [
+    "state-machine",
+    "hsm",
+    "typescript",
+    "hierarchical",
+    "finite-state-machine"
+  ],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./dist/*"
+      ]
+    }
+  },
   "scripts": {
     "build": "tsc",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "lint": "eslint src/**/*.ts",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "prepublishOnly": "npm test && npm run lint"
   },
   "devDependencies": {
     "@eslint/js": "^9.26.0",
