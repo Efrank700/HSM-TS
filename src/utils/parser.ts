@@ -1,24 +1,13 @@
-import { HSMConfig, State, StateId, StateType, Transition } from "../types/hsm";
+import {
+  HSMConfig,
+  State,
+  StateId,
+  JsonState,
+  FunctionRegistry,
+} from "../types/hsm";
 import { EventHandler } from "../types/events";
 import { State as StateClass } from "../core/State";
 import { HSM } from "../core/HSM";
-
-interface JsonState {
-  type?: StateType;
-  history?: boolean;
-  initial?: StateId;
-  states?: Record<StateId, JsonState>;
-  onEntry?: string;
-  transitions?: Array<{
-    event: string;
-    target: StateId;
-  }>;
-  childMachine?: {
-    initial: StateId;
-    transitions?: Transition[];
-  };
-  eventHandlers?: Record<string, string>;
-}
 
 interface JsonHSMConfig {
   id: string;
@@ -30,7 +19,10 @@ interface JsonHSMConfig {
   }>;
 }
 
-export function parseHSMConfig(jsonConfig: JsonHSMConfig): HSMConfig {
+export function parseHSMConfig(
+  jsonConfig: JsonHSMConfig,
+  registry: FunctionRegistry
+): HSMConfig {
   const config: HSMConfig = {
     id: jsonConfig.id,
     initial: jsonConfig.initial,
@@ -59,24 +51,17 @@ export function parseHSMConfig(jsonConfig: JsonHSMConfig): HSMConfig {
 
     // Create event handlers map
     const eventHandlers = new Map<string, EventHandler>();
-    if (stateData.eventHandlers) {
-      Object.entries(stateData.eventHandlers).forEach(
-        ([eventType, handlerCode]) => {
-          if (typeof handlerCode === "string") {
-            eventHandlers.set(
-              eventType,
-              new Function("event", handlerCode) as EventHandler
+    if (stateData.handlerReferences) {
+      Object.entries(stateData.handlerReferences).forEach(
+        ([eventType, handlerName]) => {
+          const handler = registry.handlers[handlerName];
+          if (!handler) {
+            throw new Error(
+              `Handler function '${handlerName}' not found in registry`
             );
           }
+          eventHandlers.set(eventType, handler);
         }
-      );
-    }
-
-    // Add onEntry handler if specified
-    if (stateData.onEntry) {
-      eventHandlers.set(
-        "enter",
-        new Function("event", stateData.onEntry) as EventHandler
       );
     }
 

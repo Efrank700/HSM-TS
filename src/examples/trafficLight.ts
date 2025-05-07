@@ -1,15 +1,52 @@
 import { HSM } from "../core/HSM";
 import { parseHSMConfig } from "../utils/parser";
+import { FunctionRegistry } from "../types/hsm";
+
+// Create a registry with our handler functions
+const registry: FunctionRegistry = {
+  guards: {},
+  actions: {},
+  handlers: {
+    enterRed: () => {
+      console.log("Red light");
+      return { propagate: false };
+    },
+    enterYellow: () => {
+      console.log("Yellow light");
+      return { propagate: false };
+    },
+    enterGreen: () => {
+      console.log("Green light");
+      return { propagate: false };
+    },
+    enterWaiting: () => {
+      console.log("Pedestrian waiting");
+      return { propagate: false };
+    },
+    enterCrossing: () => {
+      console.log("Pedestrian crossing");
+      return { propagate: false };
+    },
+    enterMaintenance: () => {
+      console.log("Maintenance mode");
+      return { propagate: false };
+    },
+  },
+};
 
 const trafficLightConfig = {
   id: "trafficLight",
   initial: "operational",
   states: {
     operational: {
+      id: "operational",
       initial: "red",
       states: {
         red: {
-          onEntry: '() => console.log("Red light")',
+          id: "red",
+          handlerReferences: {
+            enter: "enterRed",
+          },
           transitions: [
             {
               event: "NEXT",
@@ -18,7 +55,10 @@ const trafficLightConfig = {
           ],
         },
         yellow: {
-          onEntry: '() => console.log("Yellow light")',
+          id: "yellow",
+          handlerReferences: {
+            enter: "enterYellow",
+          },
           transitions: [
             {
               event: "NEXT",
@@ -27,7 +67,10 @@ const trafficLightConfig = {
           ],
         },
         green: {
-          onEntry: '() => console.log("Green light")',
+          id: "green",
+          handlerReferences: {
+            enter: "enterGreen",
+          },
           transitions: [
             {
               event: "NEXT",
@@ -38,10 +81,14 @@ const trafficLightConfig = {
       },
     },
     pedestrian: {
+      id: "pedestrian",
       initial: "waiting",
       states: {
         waiting: {
-          onEntry: '() => console.log("Pedestrian waiting")',
+          id: "waiting",
+          handlerReferences: {
+            enter: "enterWaiting",
+          },
           transitions: [
             {
               event: "PEDESTRIAN_BUTTON",
@@ -50,7 +97,10 @@ const trafficLightConfig = {
           ],
         },
         crossing: {
-          onEntry: '() => console.log("Pedestrian crossing")',
+          id: "crossing",
+          handlerReferences: {
+            enter: "enterCrossing",
+          },
           transitions: [
             {
               event: "CROSSING_COMPLETE",
@@ -61,7 +111,10 @@ const trafficLightConfig = {
       },
     },
     maintenance: {
-      onEntry: '() => console.log("Maintenance mode")',
+      id: "maintenance",
+      handlerReferences: {
+        enter: "enterMaintenance",
+      },
       transitions: [
         {
           event: "RESUME",
@@ -73,7 +126,7 @@ const trafficLightConfig = {
 };
 
 // Parse the configuration
-const config = parseHSMConfig(trafficLightConfig);
+const config = parseHSMConfig(trafficLightConfig, registry);
 
 // Create the HSM instance
 const trafficLight = new HSM(config);

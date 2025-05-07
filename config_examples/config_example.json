@@ -5,7 +5,7 @@
     "Start": {
       "id": "Start",
       "type": "normal",
-      "eventHandlers": {
+      "handlerReferences": {
         "enter": "StartEntry",
         "exit": "StartExit"
       },
@@ -16,7 +16,7 @@
           "SubState1": {
             "id": "SubState1",
             "type": "normal",
-            "eventHandlers": {
+            "handlerReferences": {
               "enter": "SubState1Entry",
               "exit": "SubState1Exit"
             }
@@ -24,7 +24,7 @@
           "SubState2": {
             "id": "SubState2",
             "type": "normal",
-            "eventHandlers": {
+            "handlerReferences": {
               "enter": "SubState2Entry",
               "exit": "SubState2Exit"
             }
@@ -34,12 +34,15 @@
           {
             "fromState": "SubState1",
             "eventType": "Event1",
-            "toState": "SubState2"
+            "toState": "SubState2",
+            "guardReference": "allowTransitionToSubState2",
+            "actionReference": "transitionToSubState2"
           },
           {
             "fromState": "SubState1",
             "eventType": "Event2",
-            "toState": "SubState1"
+            "toState": "SubState1",
+            "guardReference": "preventTransition"
           }
         ]
       }
@@ -48,7 +51,7 @@
       "id": "Parent",
       "type": "normal",
       "history": true,
-      "eventHandlers": {
+      "handlerReferences": {
         "enter": "ParentEntry",
         "exit": "ParentExit"
       },
@@ -59,7 +62,7 @@
           "Child1": {
             "id": "Child1",
             "type": "normal",
-            "eventHandlers": {
+            "handlerReferences": {
               "enter": "Child1Entry",
               "exit": "Child1Exit"
             }
@@ -67,7 +70,7 @@
           "Child2": {
             "id": "Child2",
             "type": "normal",
-            "eventHandlers": {
+            "handlerReferences": {
               "enter": "Child2Entry",
               "exit": "Child2Exit"
             }
@@ -77,12 +80,14 @@
           {
             "fromState": "Child1",
             "eventType": "Next",
-            "toState": "Child2"
+            "toState": "Child2",
+            "actionReference": "moveToChild2"
           },
           {
             "fromState": "Child2",
             "eventType": "Next",
-            "toState": "Child1"
+            "toState": "Child1",
+            "actionReference": "moveToChild1"
           }
         ]
       }
@@ -90,7 +95,7 @@
     "Other": {
       "id": "Other",
       "type": "normal",
-      "eventHandlers": {
+      "handlerReferences": {
         "enter": "OtherEntry",
         "exit": "OtherExit"
       }
@@ -100,7 +105,9 @@
     {
       "fromState": "Start",
       "eventType": "timer",
-      "toState": "Parent"
+      "toState": "Parent",
+      "guardReference": "allowTimerTransition",
+      "actionReference": "handleTimerTransition"
     },
     {
       "fromState": "Parent",
