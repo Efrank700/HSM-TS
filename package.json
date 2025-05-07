@@ -1,6 +1,6 @@
 {
   "name": "hsm_ts",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Hierarchical State Machine implementation in TypeScript",
   "main": "dist/index.js",
   "module": "dist/index.js",

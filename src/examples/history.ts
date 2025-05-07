@@ -1,15 +1,40 @@
 import { HSM } from "../core/HSM";
 import { parseHSMConfig } from "../utils/parser";
+import { FunctionRegistry } from "../types/hsm";
+
+// Create a registry with our handler functions
+const registry: FunctionRegistry = {
+  guards: {},
+  actions: {},
+  handlers: {
+    enterChild1: () => {
+      console.log("Entering child1");
+      return { propagate: false };
+    },
+    enterChild2: () => {
+      console.log("Entering child2");
+      return { propagate: false };
+    },
+    enterOther: () => {
+      console.log("Entering other state");
+      return { propagate: false };
+    },
+  },
+};
 
 const historyExample = {
   initial: "parent",
   states: {
     parent: {
+      id: "parent",
       history: true, // This state has history
       initial: "child1",
       states: {
         child1: {
-          onEntry: '() => console.log("Entering child1")',
+          id: "child1",
+          handlerReferences: {
+            enter: "enterChild1",
+          },
           transitions: [
             {
               event: "NEXT",
@@ -18,7 +43,10 @@ const historyExample = {
           ],
         },
         child2: {
-          onEntry: '() => console.log("Entering child2")',
+          id: "child2",
+          handlerReferences: {
+            enter: "enterChild2",
+          },
           transitions: [
             {
               event: "NEXT",
@@ -35,7 +63,10 @@ const historyExample = {
       ],
     },
     other: {
-      onEntry: '() => console.log("Entering other state")',
+      id: "other",
+      handlerReferences: {
+        enter: "enterOther",
+      },
       transitions: [
         {
           event: "RETURN",
@@ -47,10 +78,13 @@ const historyExample = {
 };
 
 // Parse the configuration
-const config = parseHSMConfig({
-  id: "historyExample",
-  ...historyExample,
-});
+const config = parseHSMConfig(
+  {
+    id: "historyExample",
+    ...historyExample,
+  },
+  registry
+);
 
 // Create the HSM instance
 const hsm = new HSM(config);

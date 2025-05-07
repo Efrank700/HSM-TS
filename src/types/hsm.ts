@@ -11,6 +11,14 @@ export interface Transition {
   action?: () => void;
 }
 
+export interface JsonTransition {
+  fromState: StateId;
+  eventType: string;
+  toState: StateId;
+  guardReference?: string;
+  actionReference?: string;
+}
+
 export interface State {
   id: StateId;
   parent?: StateId;
@@ -51,4 +59,40 @@ export interface HSM {
   getCurrentState(): StateId;
   start(): void;
   exit(): void;
+}
+
+export interface HSMConfigJSON {
+  id: string;
+  initial: string;
+  states: Record<string, JsonState>;
+  transitions?: JsonTransition[];
+}
+
+export interface JsonState {
+  id: StateId;
+  type?: StateType;
+  parent?: StateId;
+  history?: boolean;
+  handlerReferences?: Record<string, string>;
+  childMachine?: HSMConfigJSON;
+  childMachines?: HSMConfigJSON[];
+}
+
+// Function registry interfaces
+export interface GuardRegistry {
+  [key: string]: () => boolean;
+}
+
+export interface ActionRegistry {
+  [key: string]: () => void;
+}
+
+export interface HandlerRegistry {
+  [key: string]: EventHandler;
+}
+
+export interface FunctionRegistry {
+  guards: GuardRegistry;
+  actions: ActionRegistry;
+  handlers: HandlerRegistry;
 }

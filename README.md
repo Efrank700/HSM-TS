@@ -4,313 +4,271 @@ A TypeScript implementation of a Hierarchical State Machine (HSM) that provides 
 
 ## Features
 
-- **Hierarchical State Management**: Support for nested state machines with parent-child relationships
-- **Event Handling**: Comprehensive event handling system with enter/exit actions
-- **History Support**: Ability to remember and restore previous states
-- **Type Safety**: Fully typed implementation for better development experience
-- **Flexible Configuration**: JSON-based configuration for easy state machine definition
+- Hierarchical state management
+
+- Concurrent states
+- Event handling
+- Guard conditions
+- Entry/exit actions
+- Type-safe configuration
+- Function registry for handlers, guards, and actions
+
+## Roadmap
+- Choice states
+- History states (shallow and deep)
+- Fork and Join states
 
 ## Installation
 
 ```bash
-npm install hsm-js
+yarn add hsm_ts
 ```
 
-## Basic Usage
+## Usage
 
-### Configuration Examples
+### Basic Example
 
-#### 1. Basic State Machine
-A simple two-state machine that oscillates between states on a "SWITCH" event:
+```typescript
+import { HSM } from './src/core/HSM';
+import { parseHSMConfig } from './src/utils/parser';
+import { FunctionRegistry } from './src/types/hsm';
 
-```json
-{
-  "id": "BasicMachine",
-  "initial": "State1",
-  "states": {
-    "State1": {
-      "id": "State1",
-      "type": "normal",
-      "eventHandlers": {
-        "enter": "State1Entry",
-        "exit": "State1Exit"
-      }
-    },
-    "State2": {
-      "id": "State2",
-      "type": "normal",
-      "eventHandlers": {
-        "enter": "State2Entry",
-        "exit": "State2Exit"
-      }
-    }
+// Create a registry with your handler functions
+const registry: FunctionRegistry = {
+  guards: {
+    canTransition: () => true
   },
-  "transitions": [
-    {
-      "fromState": "State1",
-      "eventType": "SWITCH",
-      "toState": "State2"
-    },
-    {
-      "fromState": "State2",
-      "eventType": "SWITCH",
-      "toState": "State1"
-    }
-  ]
-}
-```
-
-#### 2. Nested State Machine
-A machine where State2 contains a nested state machine:
-
-```json
-{
-  "id": "NestedMachine",
-  "initial": "State1",
-  "states": {
-    "State1": {
-      "id": "State1",
-      "type": "normal",
-      "eventHandlers": {
-        "enter": "State1Entry",
-        "exit": "State1Exit"
-      }
-    },
-    "State2": {
-      "id": "State2",
-      "type": "normal",
-      "eventHandlers": {
-        "enter": "State2Entry",
-        "exit": "State2Exit"
-      },
-      "childMachine": {
-        "id": "NestedSubMachine",
-        "initial": "SubState1",
-        "states": {
-          "SubState1": {
-            "id": "SubState1",
-            "type": "normal",
-            "eventHandlers": {
-              "enter": "SubState1Entry",
-              "exit": "SubState1Exit"
-            }
-          },
-          "SubState2": {
-            "id": "SubState2",
-            "type": "normal",
-            "eventHandlers": {
-              "enter": "SubState2Entry",
-              "exit": "SubState2Exit"
-            }
-          }
-        },
-        "transitions": [
-          {
-            "fromState": "SubState1",
-            "eventType": "NEXT",
-            "toState": "SubState2"
-          },
-          {
-            "fromState": "SubState2",
-            "eventType": "NEXT",
-            "toState": "SubState1"
-          }
-        ]
-      }
-    }
+  actions: {
+    logTransition: () => console.log('Transitioning...')
   },
-  "transitions": [
-    {
-      "fromState": "State1",
-      "eventType": "SWITCH",
-      "toState": "State2"
-    },
-    {
-      "fromState": "State2",
-      "eventType": "SWITCH",
-      "toState": "State1"
+  handlers: {
+    enterState: () => {
+      console.log('Entering state');
+      return { propagate: false };
     }
-  ]
-}
-```
+  }
+};
 
-#### 3. Concurrent State Machines
-A machine where State2 contains multiple concurrent state machines:
-
-```json
-{
-  "id": "ConcurrentMachine",
-  "initial": "State1",
-  "states": {
-    "State1": {
-      "id": "State1",
-      "type": "normal",
-      "eventHandlers": {
-        "enter": "State1Entry",
-        "exit": "State1Exit"
-      }
-    },
-    "State2": {
-      "id": "State2",
-      "type": "normal",
-      "eventHandlers": {
-        "enter": "State2Entry",
-        "exit": "State2Exit"
+// Define your state machine configuration
+const config = {
+  id: "simple",
+  initial: "idle",
+  states: {
+    idle: {
+      id: "idle",
+      handlerReferences: {
+        enter: "enterState"
       },
-      "childMachines": [
+      transitions: [
         {
-          "id": "ConcurrentMachine1",
-          "initial": "SubState1",
-          "states": {
-            "SubState1": {
-              "id": "SubState1",
-              "type": "normal",
-              "eventHandlers": {
-                "enter": "SubState1Entry",
-                "exit": "SubState1Exit"
-              }
-            },
-            "SubState2": {
-              "id": "SubState2",
-              "type": "normal",
-              "eventHandlers": {
-                "enter": "SubState2Entry",
-                "exit": "SubState2Exit"
-              }
-            }
+          event: "START",
+          target: "active",
+          guard: "canTransition",
+          action: "logTransition"
+        }
+      ]
+    },
+    active: {
+      id: "active",
+      handlerReferences: {
+        enter: "enterState"
+      }
+    }
+  }
+};
+
+// Create and use the state machine
+const hsm = new HSM(parseHSMConfig(config, registry));
+hsm.deliverEvent({ type: "START" });
+```
+
+### History States Example
+
+```typescript
+const registry: FunctionRegistry = {
+  handlers: {
+    enterChild1: () => {
+      console.log("Entering child1");
+      return { propagate: false };
+    },
+    enterChild2: () => {
+      console.log("Entering child2");
+      return { propagate: false };
+    }
+  }
+};
+
+const config = {
+  id: "historyExample",
+  initial: "parent",
+  states: {
+    parent: {
+      id: "parent",
+      history: true,
+      initial: "child1",
+      states: {
+        child1: {
+          id: "child1",
+          handlerReferences: {
+            enter: "enterChild1"
           },
-          "transitions": [
+          transitions: [
             {
-              "fromState": "SubState1",
-              "eventType": "NEXT",
-              "toState": "SubState2"
-            },
-            {
-              "fromState": "SubState2",
-              "eventType": "NEXT",
-              "toState": "SubState1"
+              event: "NEXT",
+              target: "child2"
             }
           ]
         },
+        child2: {
+          id: "child2",
+          handlerReferences: {
+            enter: "enterChild2"
+          }
+        }
+      }
+    }
+  }
+};
+```
+
+### Concurrent States Example
+
+```typescript
+const registry: FunctionRegistry = {
+  handlers: {
+    enterStateA: () => {
+      console.log("Entering state A");
+      return { propagate: false };
+    },
+    enterStateB: () => {
+      console.log("Entering state B");
+      return { propagate: false };
+    }
+  }
+};
+
+const config = {
+  id: "concurrent",
+  initial: "parent",
+  states: {
+    parent: {
+      id: "parent",
+      type: "concurrent",
+      childMachines: [
         {
-          "id": "ConcurrentMachine2",
-          "initial": "SubStateA",
-          "states": {
-            "SubStateA": {
-              "id": "SubStateA",
-              "type": "normal",
-              "eventHandlers": {
-                "enter": "SubStateAEntry",
-                "exit": "SubStateAExit"
-              }
-            },
-            "SubStateB": {
-              "id": "SubStateB",
-              "type": "normal",
-              "eventHandlers": {
-                "enter": "SubStateBEntry",
-                "exit": "SubStateBExit"
+          id: "machineA",
+          initial: "stateA",
+          states: {
+            stateA: {
+              id: "stateA",
+              handlerReferences: {
+                enter: "enterStateA"
               }
             }
-          },
-          "transitions": [
-            {
-              "fromState": "SubStateA",
-              "eventType": "NEXT",
-              "toState": "SubStateB"
-            },
-            {
-              "fromState": "SubStateB",
-              "eventType": "NEXT",
-              "toState": "SubStateA"
+          }
+        },
+        {
+          id: "machineB",
+          initial: "stateB",
+          states: {
+            stateB: {
+              id: "stateB",
+              handlerReferences: {
+                enter: "enterStateB"
+              }
             }
-          ]
+          }
         }
       ]
     }
-  },
-  "transitions": [
-    {
-      "fromState": "State1",
-      "eventType": "SWITCH",
-      "toState": "State2"
-    },
-    {
-      "fromState": "State2",
-      "eventType": "SWITCH",
-      "toState": "State1"
-    }
-  ]
+  }
+};
+```
+
+## Function Registry
+
+The HSM uses a function registry to manage all handlers, guards, and actions. This provides several benefits:
+
+1. Type safety - all functions are properly typed
+2. No eval-like behavior - functions are referenced directly
+3. Better security - no string evaluation
+4. Easier testing - functions can be mocked
+5. Better IDE support - proper code completion and type checking
+
+### Registry Structure
+
+```typescript
+interface FunctionRegistry {
+  guards: {
+    [key: string]: (event: Event) => boolean;
+  };
+  actions: {
+    [key: string]: (event: Event) => void;
+  };
+  handlers: {
+    [key: string]: (event: Event) => EventHandlingResult;
+  };
 }
 ```
 
-### Creating and Using the HSM
+### Using the Registry
+
+1. Define your functions in the registry
+2. Reference them by name in your state configuration
+3. Pass the registry to `parseHSMConfig`
 
 ```typescript
-import { HSM } from 'hsm-js';
-
-// Create a new HSM instance
-const hsm = new HSM(config);
-
-// Start the state machine
-hsm.start();
-
-// Deliver events to the state machine
-hsm.deliverEvent({ type: 'SWITCH' });
-hsm.deliverEvent({ type: 'NEXT' });
-
-// Get current state
-const currentState = hsm.getCurrentState();
+const registry: FunctionRegistry = {
+  guards: {
+    canTransition: (event) => event.type === "START"
+  },
+  actions: {
+    logTransition: (event) => console.log(`Transitioning on ${event.type}`)
+  },
+  handlers: {
+    enterState: (event) => {
+      console.log(`Entering state on ${event.type}`);
+      return { propagate: false };
+    }
+  }
+};
 ```
 
-## Key Concepts
-
-### States
-
-States are the building blocks of your state machine. Each state can have:
-- Enter/exit handlers
-- Child state machines
-- History tracking
-- Event handlers
-
-### Transitions
-
-Transitions define how the state machine moves between states based on events:
-- From state
-- Event type
-- To state
-- Optional guards and actions
-
-### Events
-
-Events trigger state transitions and can be handled at multiple levels:
-- Global events
-- State-specific events
-- Child state machine events
+Functions can also be added manually to different transitions or states in the JS files as needed.
 
 ## API Reference
 
 ### HSM Class
 
-- `constructor(config: HSMConfig)`: Creates a new HSM instance
-- `start()`: Initializes the state machine
-- `deliverEvent(event: Event)`: Processes an event
-- `getCurrentState()`: Returns the current active state
-- `getConfig()`: Returns the current configuration
-- `getContext()`: Returns the current context
+- `constructor(config: HSMConfig)`
+- `deliverEvent(event: Event): void`
+- `getActiveState(): StateId`
+- `getActiveStates(): Set<StateId>`
 
-### State Class
+### Event Handling
 
-- `onEnter()`: Called when entering a state
-- `onExit()`: Called when exiting a state
-- `deliverEvent(event: Event)`: Processes events for the state
-- `addChildMachine(machine: HSM)`: Adds a child state machine
-- `removeChildMachine(machine: HSM)`: Removes a child state machine
+Events can be handled at any level of the state hierarchy. The `propagate` flag in the `EventHandlingResult` determines whether the event should continue propagating up the hierarchy.
+
+```typescript
+interface EventHandlingResult {
+  propagate: boolean;
+}
+```
+
+### State Types
+
+- `normal` - Standard state
+- `concurrent` - State that can have multiple active child states
+- `history` - State that remembers its last active child state
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request or open an Issue!
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a new Pull Request
 
 ## License
 
-MIT
+This project is licensed under the MIT License - see the LICENSE file for details.

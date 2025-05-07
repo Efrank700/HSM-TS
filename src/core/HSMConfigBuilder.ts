@@ -1,33 +1,22 @@
-import { HSMConfig, StateId, State, HSM } from "../types/hsm";
+import {
+  HSMConfig,
+  StateId,
+  State,
+  HSM,
+  JsonState,
+  FunctionRegistry,
+  HSMConfigJSON,
+} from "../types/hsm";
 import { EventHandler } from "../types/events";
 import { InvalidConfigurationError } from "../types/errors";
 import { State as StateClass } from "./State";
 import { HSM as HSMClass } from "./HSM";
 
-interface StateJSON {
-  id: string;
-  parent?: string;
-  type?: "normal" | "choice";
-  history?: boolean;
-  childMachine?: HSMConfigJSON;
-  eventHandlers?: Record<string, string>;
-}
-
-interface HSMConfigJSON {
-  id: string;
-  initial: string;
-  states: Record<string, StateJSON>;
-  transitions: Array<{
-    fromState: string;
-    eventType: string;
-    toState: string;
-    guard?: string;
-    action?: string;
-  }>;
-}
-
 export class HSMConfigBuilder {
-  static fromJSON(config: HSMConfigJSON): HSMConfig {
+  static fromJSON(
+    config: HSMConfigJSON,
+    registry: FunctionRegistry
+  ): HSMConfig {
     // Validate configuration
     if (!config.id) {
       throw new InvalidConfigurationError("Machine ID is required");
@@ -42,21 +31,40 @@ export class HSMConfigBuilder {
     // Convert states to Map
     const states = new Map<StateId, State>();
     Object.entries(config.states).forEach(([id, state]) => {
-      states.set(id, this.convertState(id, state));
+      states.set(id, this.convertState(id, state, registry));
     });
 
     // Convert transitions
-    const transitions = config.transitions.map((transition) => ({
-      fromState: transition.fromState,
-      eventType: transition.eventType,
-      toState: transition.toState,
-      guard: transition.guard
-        ? new Function("return " + transition.guard)()
-        : undefined,
-      action: transition.action
-        ? new Function("return " + transition.action)()
-        : undefined,
-    }));
+    const transitions =
+      config.transitions?.map((transition) => {
+        // Look up guard and action functions from registry
+        const guard = transition.guardReference
+          ? registry.guards[transition.guardReference]
+          : undefined;
+        const action = transition.actionReference
+          ? registry.actions[transition.actionReference]
+          : undefined;
+
+        // Validate that referenced functions exist
+        if (transition.guardReference && !guard) {
+          throw new InvalidConfigurationError(
+            `Guard function '${transition.guardReference}' not found in registry`
+          );
+        }
+        if (transition.actionReference && !action) {
+          throw new InvalidConfigurationError(
+            `Action function '${transition.actionReference}' not found in registry`
+          );
+        }
+
+        return {
+          fromState: transition.fromState,
+          eventType: transition.eventType,
+          toState: transition.toState,
+          guard,
+          action,
+        };
+      }) || [];
 
     return {
       id: config.id,
@@ -66,25 +74,44 @@ export class HSMConfigBuilder {
     };
   }
 
-  private static convertState(id: StateId, state: StateJSON): State {
-    // Convert event handlers
+  private static convertState(
+    id: StateId,
+    state: JsonState,
+    registry: FunctionRegistry
+  ): State {
+    // Convert event handlers using registry
     const eventHandlers = new Map<string, EventHandler>();
-    if (state.eventHandlers) {
-      Object.entries(state.eventHandlers).forEach(
-        ([eventType, handlerCode]) => {
-          eventHandlers.set(
-            eventType,
-            new Function("event", handlerCode) as EventHandler
-          );
+    if (state.handlerReferences) {
+      Object.entries(state.handlerReferences).forEach(
+        ([eventType, handlerName]) => {
+          const handler = registry.handlers[handlerName];
+          if (!handler) {
+            throw new InvalidConfigurationError(
+              `Handler function '${handlerName}' not found in registry`
+            );
+          }
+          eventHandlers.set(eventType, handler);
         }
       );
     }
 
-    // Create child machine if specified
-    let childMachine: Set<HSM> | undefined;
+    // Create child machines
+    let childMachines: Set<HSM> | undefined;
+
+    // Handle single child machine
     if (state.childMachine) {
-      const childConfig = this.fromJSON(state.childMachine);
-      childMachine = new Set([new HSMClass(childConfig)]);
+      const childConfig = this.fromJSON(state.childMachine, registry);
+      childMachines = new Set([new HSMClass(childConfig)]);
+    }
+
+    // Handle concurrent child machines
+    if (state.childMachines) {
+      childMachines = new Set(
+        state.childMachines.map((childConfig) => {
+          const config = this.fromJSON(childConfig, registry);
+          return new HSMClass(config);
+        })
+      );
     }
 
     return new StateClass({
@@ -92,7 +119,7 @@ export class HSMConfigBuilder {
       parent: state.parent,
       type: state.type || "normal",
       history: state.history,
-      childMachines: childMachine,
+      childMachines,
       eventHandlers: Object.fromEntries(eventHandlers),
     });
   }
